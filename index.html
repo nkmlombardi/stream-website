@@ -1,0 +1,198 @@
+<html>
+    <head>
+        <title>RakerTV</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.3.3/semantic.min.css" />
+    </head>
+
+    <style>
+        .next {
+            background: #EEE;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .application {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        .container-form {
+            height: 50px;
+            margin: 50px 0;
+        }
+
+        .container-playing, .container-waiting {
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+
+    <body>
+        <div id="app" class="application">
+            <div class="ui container">
+                <!-- <div class="ui ignored info message" v-if="error">
+                    {{ error }}
+                </div>
+
+                <div class="ui container container-form">
+                    <label for="">Twitch Username</label>
+                    <input type="text" v-model="form.user" placeholder="Example: RakerTV">
+                    <label>IGN</label>
+                    <input type="text" v-model="form.ign" placeholder="Example: Twitch RakerTV">
+                    <label>Platform</label>
+                    <select name="" id="" v-model="form.platform">
+                        <option value="PC">PC</option>
+                        <option value="XBOX">Xbox</option>
+                        <option value="PS">Playstation</option>
+                        <option value="SWITCH">Switch</option>
+                        <option value="MOBILE">Mobile</option>
+                    </select>
+                    <button v-on:click="join">Join Queue</button>
+                </div> -->
+
+                <div class="ui container container-playing">
+                    <h2 class="ui header">Currently Playing</h2>
+                    <table class="ui celled table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Username</th>
+                                <th>In-Game Name</th>
+                                <th>Platform</th>
+                                <th>Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(player, index) in playing">
+                                <td>{{ index + 1 }}</td>
+                                <td>{{ player.user }}</td>
+                                <td>{{ player.ign }}</td>
+                                <td>{{ player.platform || 'Unknown' }}</td>
+                                <td>{{ player.wagered }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="ui container container-waiting">
+                    <h2 class="ui header">Queue (Waiting)</h2>
+                    <table class="ui celled table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Username</th>
+                                <th>In-Game Name</th>
+                                <th>Platform</th>
+                                <th>Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(player, index) in queue" :class="{ positive: player.next }">
+                                <td>{{ index + 1 }}</td>
+                                <td>{{ player.user }}</td>
+                                <td>{{ player.ign }}</td>
+                                <td>{{ player.platform || 'Unknown' }}</td>
+                                <td>{{ player.wagered }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.3.3/semantic.min.js"></script>
+
+        <script>
+            var application = new Vue({
+                el: '#app',
+                data() {
+                    return {
+                        message: 'Hello World',
+                        queue: [],
+                        playing: [],
+                        platforms: ['PC', 'XBOX', 'PS', 'SWITCH', 'MOBILE'],
+                        excludedPlatform: false,
+                        partySize: 3,
+                        error: false,
+
+                        form: {
+                            user: '',
+                            ign: '',
+                            platform: 'PC'
+                        }
+                    }
+                },
+                mounted() {
+                    this.refresh()
+                    setInterval(this.refresh, 5000)
+                },
+                methods: {
+                    refresh: function() {
+                        axios({ method: "GET", "url": "http://localhost:3000/data" })
+                            .then(result => {
+                                var counter = 0
+
+                                if (result.data.queue && result.data.queue.length > 1) {
+                                    if (result.data.queue[0].platform === 'PS') this.excludedPlatform = 'XBOX'
+                                    if (result.data.queue[0].platform === 'XBOX') this.excludedPlatform = 'PS'
+                                }
+
+                                if (result.data) {
+                                    this.queue = result.data.queue.map(function(player, index) {
+                                        if (counter < this.partySize) {
+                                            if (!player.platform || player.platform !== this.excludedPlatform) {
+                                                player.next = true
+                                                counter++
+                                            }
+                                        }
+
+                                        return player
+                                    }.bind(this))
+
+                                    this.playing = result.data.playing
+                                }
+                            }, error => {
+                                console.error(error)
+                            })
+                    },
+
+                    join: function() {
+                        console.log(this.form)
+
+                        if (this.form.user === '') {
+                            this.error = 'No Twitch username provided.'
+                            return
+                        }
+
+                        if (this.form.ign === '') {
+                            this.error = 'No in-game name provided.'
+                            return
+                        }
+
+                        axios.post('http://localhost:3000/save', this.form)
+                            .then(function (response) {
+                                console.log(response)
+                                this.form.user = ''
+                                this.form.ign = ''
+                                this.form.platform = 'PC'
+                            })
+                            .catch(function (error) {
+                                console.error(error)
+                            })
+
+                    }
+                }
+            }).$mount('#app')
+        </script>
+
+    </body>
+</html>
